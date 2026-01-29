@@ -30,7 +30,6 @@
             align-items: center;
             min-height: 100vh;
             overscroll-behavior: none;
-            /* Verhindert Bouncing auf iOS */
         }
 
         .app-container {
@@ -130,7 +129,6 @@
             position: relative;
         }
 
-        /* STATUS & HILFE */
         #status-bar {
             margin-top: 20px;
             font-size: 0.75rem;
@@ -153,7 +151,6 @@
             text-align: center;
         }
 
-        /* TAB DOTS */
         .dots-container {
             display: flex;
             justify-content: center;
@@ -183,7 +180,7 @@
                 ISE)</h1>
         </header>
 
-        <div id="loading">Verbinde mit Energy-Charts API...</div>
+        <div id="loading">Verbinde mit Energy-Charts via Proxy...</div>
 
         <div id="app-content" style="display: none;">
 
@@ -219,65 +216,67 @@
             </div>
 
             <div id="status-bar">
-                Quelle: Energy-Charts.info / Fraunhofer ISE<br>
+                Quelle: Fraunhofer ISE (via corsproxy.io)<br>
                 Wischen Sie, um den Tag zu wechseln.
             </div>
         </div>
     </div>
 
     <script>
-        // Konfiguration
-        const API_URL = "https://api.energy-charts.info/price?bzn=DE-LU";
+        // KORREKTUR: Wir nutzen einen CORS-Proxy, um die Browsersperre zu umgehen.
+        // Die Ziel-URL ist die Energy-Charts API.
+        const TARGET_API = "https://api.energy-charts.info/price?bzn=DE-LU";
+        const PROXY_URL = "https://corsproxy.io/?";
 
         // Globale Variablen
-        let allData = [];     // Alle rohen Datenpunkte
-        let daysMap = {};     // Daten gruppiert nach "YYYY-MM-DD"
-        let sortedDays = [];  // Liste der verfügbaren Datumsschlüssel
-        let currentDayIndex = 0; // Welcher Tag wird im Chart angezeigt? (Index in sortedDays)
+        let daysMap = {};
+        let sortedDays = [];
+        let currentDayIndex = 0;
         let chartInstance = null;
 
         async function init() {
             try {
-                // 1. Abruf der Daten
-                const response = await fetch(API_URL);
-                if (!response.ok) throw new Error("API Antwort nicht ok");
-                const json = await response.json();
+                // 1. Abruf der Daten über Proxy
+                // Wir fügen den Proxy VOR die eigentliche URL
+                const response = await fetch(PROXY_URL + encodeURIComponent(TARGET_API));
 
-                // Die API liefert unix seconds timestamps
-                // Struktur: { unix_seconds: [123, 124...], price: [50.1, 40.2...], unit: "EUR/MWh" }
+                if (!response.ok) throw new Error("Netzwerkfehler (Proxy)");
+                const json = await response.json();
 
                 const timestamps = json.unix_seconds;
                 const prices = json.price;
 
                 if (!timestamps || !prices || timestamps.length === 0) {
-                    throw new Error("Keine Daten erhalten.");
+                    throw new Error("API lieferte leere Daten.");
                 }
 
-                // 2. Daten verarbeiten und gruppieren
+                // 2. Daten verarbeiten
                 processData(timestamps, prices);
 
-                // 3. UI initialisieren
+                // 3. UI Starten
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('app-content').style.display = 'block';
 
-                // Initial: Heute suchen
+                // Tag ermitteln: Wir starten immer beim AKTUELLEN Tag
                 const todayKey = new Date().toISOString().split('T')[0];
-                const todayIndex = sortedDays.indexOf(todayKey);
+                const foundIndex = sortedDays.indexOf(todayKey);
 
-                // Falls "Heute" nicht in der Liste ist (sehr unwahrscheinlich), nimm den letzten verfügbaren Tag
-                currentDayIndex = todayIndex >= 0 ? todayIndex : sortedDays.length - 1;
+                // Falls "Heute" nicht in der Liste ist, nimm den letzten verfügbaren Tag
+                currentDayIndex = foundIndex >= 0 ? foundIndex : sortedDays.length - 1;
 
                 updateUI();
                 updateCurrentPrice();
 
-                // Swipe Logic starten
+                // Events
                 initSwipe();
-
-                // Auto-Refresh für "Aktuellen Preis" (nur Uhrzeit/Anzeige, kein neuer API Call)
                 setInterval(updateCurrentPrice, 60000);
 
             } catch (err) {
-                document.getElementById('loading').innerHTML = `<span style="color:#f87171">Fehler: ${err.message}</span><br><br><button onclick="location.reload()" style="padding:10px; border-radius:5px; background:#333; color:#fff; border:none;">Neu laden</button>`;
+                document.getElementById('loading').innerHTML = `
+                    <span style="color:#f87171">Ladefehler: ${err.message}</span><br><br>
+                    <small style="color:#666">Blockiert eventuell der Browser oder der Proxy ist überlastet.</small><br><br>
+                    <button onclick="location.reload()" style="padding:10px 20px; border-radius:10px; background:#333; color:#fff; border:none; cursor:pointer;">Neu laden</button>
+                `;
                 console.error(err);
             }
         }
@@ -287,47 +286,43 @@
 
             timestamps.forEach((ts, index) => {
                 const dateObj = new Date(ts * 1000);
-                const dateKey = dateObj.toISOString().split('T')[0]; // "2023-10-27"
+                const dateKey = dateObj.toISOString().split('T')[0]; // Format: "2023-10-27"
 
                 if (!daysMap[dateKey]) daysMap[dateKey] = [];
 
                 daysMap[dateKey].push({
                     timestamp: ts * 1000,
                     dateObj: dateObj,
-                    // Umrechnung EUR/MWh -> Cent/kWh: geteilt durch 10
-                    priceCent: prices[index] / 10
+                    priceCent: prices[index] / 10 // Euro/MWh -> Cent/kWh
                 });
             });
 
-            // Sortierte Liste der Tage erstellen
             sortedDays = Object.keys(daysMap).sort();
         }
 
         function updateUI() {
-            // Buttons Status
+            // Navigation Buttons deaktivieren wenn am Rand
             document.getElementById('btn-prev').disabled = (currentDayIndex <= 0);
             document.getElementById('btn-next').disabled = (currentDayIndex >= sortedDays.length - 1);
 
-            // Dots Status
-            document.getElementById('dot-0').className = (currentDayIndex < sortedDays.length - 1) ? 'dot' : 'dot'; // Logik vereinfacht: Wenn nicht letzter, dann dot 0 an (falsch, hier nur visueller indikator für 2 seiten)
-            // Bessere Dot Logik: Zeige einfach welchen Index wir von den verfügbaren haben?
-            // Wir machen es einfach: Wenn Index = Letzter (meist Morgen), dann Dot Rechts aktiv.
+            // Dots: Einfache Logik - Dot 2 leuchtet, wenn wir NICHT auf dem ersten Tag sind (Indikator für Morgen)
+            // Oder besser: Zeigt einfach Position an.
             const isLast = currentDayIndex === sortedDays.length - 1;
             document.getElementById('dot-0').className = isLast ? 'dot' : 'dot active';
             document.getElementById('dot-1').className = isLast ? 'dot active' : 'dot';
 
-            // Daten für den ausgewählten Tag holen
+            // Daten holen
             const dayKey = sortedDays[currentDayIndex];
             const points = daysMap[dayKey];
 
-            // Header Info setzen
+            // Texte
             const dayDate = new Date(points[0].timestamp);
             const todayStr = new Date().toDateString();
             const isToday = dayDate.toDateString() === todayStr;
 
             let titleText = isToday ? "Heute" : dayDate.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit' });
 
-            // Durchschnitt berechnen
+            // Durchschnitt des Tages
             const avg = points.reduce((sum, p) => sum + p.priceCent, 0) / points.length;
 
             document.getElementById('chart-title').innerText = titleText;
@@ -338,23 +333,16 @@
 
         function renderChart(points) {
             const ctx = document.getElementById('priceChart').getContext('2d');
-
             if (chartInstance) chartInstance.destroy();
 
-            const labels = points.map(p => {
-                // Nur Uhrzeit Formatieren
-                return p.dateObj.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-            });
+            const labels = points.map(p => p.dateObj.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }));
             const data = points.map(p => p.priceCent);
 
-            // Gradient für die Fläche
+            // Verlauf (Gradient)
             const gradient = ctx.createLinearGradient(0, 0, 0, 400);
             gradient.addColorStop(0, 'rgba(239, 68, 68, 0.6)');    // Rot
             gradient.addColorStop(0.5, 'rgba(234, 179, 8, 0.4)');  // Gelb
             gradient.addColorStop(1, 'rgba(34, 197, 94, 0.1)');    // Grün
-
-            // Farbe der Linie basierend auf Durchschnitt (optional, hier einfach grau)
-            const borderColor = '#e0e0e0';
 
             chartInstance = new Chart(ctx, {
                 type: 'line',
@@ -363,14 +351,14 @@
                     datasets: [{
                         label: 'Preis',
                         data: data,
-                        borderColor: borderColor,
+                        borderColor: '#e0e0e0',
                         borderWidth: 2,
                         backgroundColor: gradient,
                         fill: true,
                         pointRadius: 0,
-                        pointHitRadius: 15,
+                        pointHitRadius: 20, // Größerer Touch-Bereich
                         pointHoverRadius: 6,
-                        tension: 0.3 // Etwas runder
+                        tension: 0.3
                     }]
                 },
                 options: {
@@ -380,11 +368,12 @@
                     plugins: {
                         legend: { display: false },
                         tooltip: {
-                            backgroundColor: 'rgba(30,30,30,0.9)',
+                            backgroundColor: 'rgba(30,30,30,0.95)',
                             titleColor: '#aaa',
                             bodyColor: '#fff',
                             bodyFont: { size: 14, weight: 'bold' },
                             displayColors: false,
+                            padding: 12,
                             callbacks: {
                                 title: (items) => items[0].label + ' Uhr',
                                 label: (context) => context.parsed.y.toFixed(2) + ' ct/kWh'
@@ -393,11 +382,7 @@
                     },
                     scales: {
                         x: {
-                            ticks: {
-                                color: '#666',
-                                maxTicksLimit: 6, // Zeige nicht jede 15min Beschriftung
-                                maxRotation: 0
-                            },
+                            ticks: { color: '#666', maxTicksLimit: 6, maxRotation: 0 },
                             grid: { display: false }
                         },
                         y: {
@@ -413,22 +398,19 @@
         function updateCurrentPrice() {
             const now = new Date();
             const nowTs = now.getTime();
-
-            // Suche aktuellen Punkt über ALLE verfügbaren Daten hinweg
             let currentPoint = null;
 
-            // Wir iterieren durch alle geladenen Tage
+            // Finde den aktuellsten Preis
             for (const key of sortedDays) {
                 const points = daysMap[key];
-                // Finde Punkt wo: start <= now < start + duration
-                // Da wir die Dauer nicht exakt kennen (15min oder 60min?), prüfen wir den Abstand zum nächsten
                 for (let i = 0; i < points.length; i++) {
                     const p = points[i];
-                    // Annahme: Punkt ist gültig bis zum nächsten Punkt
-                    const nextP = points[i + 1];
-                    const endTime = nextP ? nextP.timestamp : (p.timestamp + 3600000); // Fallback 1h
+                    // Wir nehmen an, der Preis gilt bis zum nächsten Datenpunkt (oder 1h/15min)
+                    // Wir schätzen einfach 15min (900000ms), da API oft 15min liefert.
+                    // Sicherer: Bis zum nächsten Timestamp.
+                    let nextTs = points[i + 1] ? points[i + 1].timestamp : (p.timestamp + 3600000);
 
-                    if (nowTs >= p.timestamp && nowTs < endTime) {
+                    if (nowTs >= p.timestamp && nowTs < nextTs) {
                         currentPoint = p;
                         break;
                     }
@@ -442,11 +424,9 @@
             if (currentPoint) {
                 displayEl.innerText = currentPoint.priceCent.toFixed(2);
 
-                // Einfärbung Logik (Vergleich mit heutigem Schnitt)
-                // Hole Schnitt von Heute (Index 0 in sortedDays meistens, oder currentDay suchen)
+                // Farbe anhand Tagesschnitt
+                let todayAvg = 15;
                 const todayKey = new Date().toISOString().split('T')[0];
-                let todayAvg = 15; // Fallback
-
                 if (daysMap[todayKey]) {
                     const p = daysMap[todayKey];
                     todayAvg = p.reduce((a, b) => a + b.priceCent, 0) / p.length;
@@ -459,24 +439,19 @@
                 }
 
                 timeEl.innerText = now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-
             } else {
-                // Fallback, falls API veraltet oder leer
                 displayEl.innerText = "--";
                 timeEl.innerText = "--:--";
             }
         }
 
-        // --- SWIPE HANDLING ---
+        // Swipe
         function initSwipe() {
             const el = document.getElementById('swipe-area');
             let startX = 0;
             let endX = 0;
 
-            el.addEventListener('touchstart', e => {
-                startX = e.changedTouches[0].screenX;
-            }, { passive: true });
-
+            el.addEventListener('touchstart', e => { startX = e.changedTouches[0].screenX; }, { passive: true });
             el.addEventListener('touchend', e => {
                 endX = e.changedTouches[0].screenX;
                 handleSwipe();
@@ -484,14 +459,10 @@
 
             function handleSwipe() {
                 const threshold = 50;
-                // Wisch nach LINKS (Finger bewegt sich von rechts nach links) -> Nächster Tag
-                if (startX - endX > threshold) {
-                    nextDay();
-                }
-                // Wisch nach RECHTS (Finger bewegt sich von links nach rechts) -> Vorheriger Tag
-                if (endX - startX > threshold) {
-                    prevDay();
-                }
+                // Links wischen -> Nächster Tag
+                if (startX - endX > threshold) nextDay();
+                // Rechts wischen -> Vorheriger Tag
+                if (endX - startX > threshold) prevDay();
             }
         }
 
@@ -509,13 +480,10 @@
             }
         }
 
-        // Button Listener
         document.getElementById('btn-next').addEventListener('click', nextDay);
         document.getElementById('btn-prev').addEventListener('click', prevDay);
 
-        // Start
         init();
-
     </script>
 </body>
 
