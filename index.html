@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Strompreis Monitor</title>
+    <title>Strompreis Live</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
@@ -13,6 +13,8 @@
             --card-bg: #1e1e1e;
             --text-main: #e0e0e0;
             --text-muted: #a0a0a0;
+            --accent-green: #4ade80;
+            --accent-red: #f87171;
             --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
 
@@ -54,34 +56,41 @@
             text-align: center;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
             margin-bottom: 20px;
+            border: 1px solid #333;
         }
 
         .price-value {
-            font-size: 3.5rem;
+            font-size: 4rem;
             font-weight: 700;
             line-height: 1;
+            letter-spacing: -1px;
         }
 
         .price-unit {
-            font-size: 1rem;
+            font-size: 1.2rem;
             color: var(--text-muted);
+            margin-top: 5px;
+            display: block;
         }
 
         .avg-info {
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             color: var(--text-muted);
-            margin-top: 10px;
-            padding-top: 10px;
+            margin-top: 15px;
+            padding-top: 15px;
             border-top: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
         }
 
         .chart-container {
             background-color: var(--card-bg);
             border-radius: 20px;
-            padding: 10px;
+            padding: 15px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
             height: 350px;
             position: relative;
+            border: 1px solid #333;
         }
 
         #loading {
@@ -90,11 +99,11 @@
             text-align: center;
         }
 
-        #debug-msg {
+        #status-msg {
             font-size: 0.7rem;
             color: #555;
             text-align: center;
-            margin-top: 10px;
+            margin-top: 20px;
         }
 
         .text-green {
@@ -111,19 +120,21 @@
 
     <div class="app-container">
         <header>
-            <h1>Strompreis Monitor</h1>
+            <h1>Börsenstrom (EPEX Spot)</h1>
         </header>
 
-        <div id="loading">Lade Daten (Zeitraum: 3 Tage)...</div>
+        <div id="loading">Lade aktuelle Marktdaten...</div>
 
         <div id="app-content" style="display: none;">
             <div class="current-price-card">
-                <span style="font-size: 0.9rem; color: #a0a0a0;">Aktueller Preis</span>
+                <span
+                    style="font-size: 0.9rem; color: #a0a0a0; text-transform: uppercase; letter-spacing: 1px;">Aktuell</span>
                 <div id="price-display" class="price-value">--</div>
                 <span class="price-unit">Cent / kWh</span>
 
                 <div class="avg-info">
-                    Ø 3 Tage: <span id="avg-display" style="color: #fff; font-weight: bold;">--</span> ct/kWh
+                    <span>Ø Heute: <b id="avg-display" style="color: #fff;">--</b></span>
+                    <span id="time-display">--:-- Uhr</span>
                 </div>
             </div>
 
@@ -131,11 +142,7 @@
                 <canvas id="priceChart"></canvas>
             </div>
 
-            <p style="text-align: center; font-size: 0.7rem; color: #555; margin-top: 20px;">
-                Grün/Rot Verlauf basierend auf Preisniveau.<br>
-                Gestrichelte Linie = Ø der letzten 3 Tage.
-            </p>
-            <div id="debug-msg"></div>
+            <div id="status-msg"></div>
         </div>
     </div>
 
@@ -145,98 +152,78 @@
             const contentEl = document.getElementById('app-content');
             const priceDisplay = document.getElementById('price-display');
             const avgDisplay = document.getElementById('avg-display');
-            const debugMsg = document.getElementById('debug-msg');
+            const timeDisplay = document.getElementById('time-display');
+            const statusMsg = document.getElementById('status-msg');
 
             try {
                 const now = new Date();
-                const currentTimestamp = now.getTime();
 
-                // ÄNDERUNG: Nur 3 Tage zurück (statt 10), um API-Limit nicht zu sprengen
-                const daysBack = 3;
-                const pastDate = new Date();
-                pastDate.setDate(now.getDate() - daysBack);
-                const startTimestamp = pastDate.getTime();
+                // KORREKTUR: Wir rufen exakt ab HEUTE 00:00 Uhr ab.
+                // Das garantiert, dass wir die aktuellen Daten bekommen und das Diagramm gefüllt ist.
+                const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
 
-                // Daten abrufen
-                const response = await fetch(`https://api.awattar.de/v1/marketdata?start=${startTimestamp}`);
+                // API Call
+                const response = await fetch(`https://api.awattar.de/v1/marketdata?start=${startOfToday}`);
                 const json = await response.json();
                 const data = json.data;
 
-                // DEBUG: Anzeigen wie viele Daten wir bekommen haben
-                debugMsg.innerText = `Status: ${data.length} Datensätze empfangen.`;
+                statusMsg.innerText = `Datenquelle: aWATTar API | ${data.length} Werte geladen`;
 
                 if (!data || data.length === 0) {
-                    throw new Error("API lieferte leere Liste.");
+                    throw new Error("Keine Daten für heute verfügbar.");
                 }
 
-                // Durchschnitt berechnen (über alle empfangenen Daten)
+                // Durchschnitt berechnen (Basierend auf den geladenen Daten - also Heute + Morgen falls verfügbar)
                 let sum = 0;
-                let count = 0;
-                data.forEach(item => {
-                    sum += item.marketprice;
-                    count++;
-                });
-                const averagePriceCent = (sum / count) / 10;
-
-                // Daten filtern für die Anzeige (Ab heute 00:00 Uhr für den Chart)
-                const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-                const displayData = data.filter(item => item.start_timestamp >= startOfToday);
+                data.forEach(item => sum += item.marketprice);
+                const averagePriceCent = (sum / data.length) / 10;
+                avgDisplay.innerText = averagePriceCent.toFixed(2) + " ct";
 
                 // Arrays für Chart
                 const labels = [];
                 const prices = [];
-                const averageLineData = [];
+                const avgLine = [];
                 let currentPrice = null;
+                const currentTimestamp = now.getTime();
 
-                displayData.forEach(point => {
+                data.forEach(point => {
                     const date = new Date(point.start_timestamp);
                     const hours = date.getHours().toString().padStart(2, '0');
-                    const day = date.getDate().toString().padStart(2, '0');
                     const priceCent = point.marketprice / 10;
 
-                    if (hours === "00") {
-                        labels.push(`${day}. ${hours}:00`);
-                    } else {
-                        labels.push(`${hours}:00`);
-                    }
-
+                    labels.push(`${hours}:00`);
                     prices.push(priceCent);
-                    averageLineData.push(averagePriceCent);
+                    avgLine.push(averagePriceCent);
 
-                    // Aktuellen Preis finden
+                    // Aktuellen Preis finden (Exakter Zeitstempel Vergleich)
                     if (currentTimestamp >= point.start_timestamp && currentTimestamp < point.end_timestamp) {
                         currentPrice = priceCent;
                     }
                 });
 
-                // FALLBACK: Wenn kein aktueller Preis gefunden wurde (z.B. API hängt hinterher),
-                // nehmen wir den allerletzten verfügbaren Preis aus der Liste.
-                if (currentPrice === null && data.length > 0) {
-                    const lastItem = data[data.length - 1];
-                    currentPrice = lastItem.marketprice / 10;
-                    debugMsg.innerText += " (Zeige letzten verfügbaren Preis)";
-                }
-
-                // UI Updates
+                // UI Update: Preis
                 if (currentPrice !== null) {
                     priceDisplay.innerText = currentPrice.toFixed(2);
-                    avgDisplay.innerText = averagePriceCent.toFixed(2);
+                    // Farbe: Grün wenn unter Durchschnitt, Rot wenn drüber
+                    priceDisplay.className = 'price-value ' + (currentPrice <= averagePriceCent ? 'text-green' : 'text-red');
 
-                    if (currentPrice < averagePriceCent) {
-                        priceDisplay.classList.add('text-green');
-                    } else {
-                        priceDisplay.classList.add('text-red');
-                    }
+                    timeDisplay.innerText = "Stand: " + now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
                 } else {
                     priceDisplay.innerText = "N/A";
+                    statusMsg.innerText += " (Momentan kein Preis für diese Stunde)";
                 }
 
                 // Chart erstellen
                 const ctx = document.getElementById('priceChart').getContext('2d');
-                const gradient = ctx.createLinearGradient(0, 0, 0, 350);
-                gradient.addColorStop(0, 'rgba(248, 113, 113, 0.8)');
-                gradient.addColorStop(0.5, 'rgba(250, 204, 21, 0.5)');
-                gradient.addColorStop(1, 'rgba(74, 222, 128, 0.2)');
+
+                // Dynamischer Gradient basierend auf Min/Max im Chart
+                const maxPrice = Math.max(...prices);
+                const minPrice = Math.min(...prices);
+
+                // Wir erstellen einen Gradienten, der den Chartbereich abdeckt
+                const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+                gradient.addColorStop(0, 'rgba(248, 113, 113, 0.6)');   // Rot (oben/teuer)
+                gradient.addColorStop(1, 'rgba(74, 222, 128, 0.1)');   // Grün (unten/billig)
 
                 new Chart(ctx, {
                     type: 'line',
@@ -244,25 +231,25 @@
                         labels: labels,
                         datasets: [
                             {
-                                label: 'Preis',
+                                label: 'Preis (ct/kWh)',
                                 data: prices,
                                 borderColor: '#e0e0e0',
-                                borderWidth: 2,
+                                borderWidth: 3,
                                 backgroundColor: gradient,
                                 fill: true,
                                 pointRadius: 0,
+                                pointHitRadius: 20, // Erleichtert das Antippen auf Handy
                                 pointHoverRadius: 6,
                                 tension: 0.4
                             },
                             {
-                                label: 'Ø 3 Tage',
-                                data: averageLineData,
+                                label: 'Ø Durchschnitt',
+                                data: avgLine,
                                 borderColor: '#a0a0a0',
-                                borderWidth: 2,
-                                borderDash: [5, 5],
+                                borderWidth: 1,
+                                borderDash: [6, 4],
                                 pointRadius: 0,
-                                fill: false,
-                                tension: 0
+                                fill: false
                             }
                         ]
                     },
@@ -273,16 +260,24 @@
                         plugins: {
                             legend: { display: false },
                             tooltip: {
+                                backgroundColor: '#222',
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
                                 callbacks: {
-                                    label: function (context) {
-                                        return context.parsed.y.toFixed(2) + ' ct';
-                                    }
+                                    label: (context) => context.raw.toFixed(2) + ' ct/kWh'
                                 }
                             }
                         },
                         scales: {
-                            x: { grid: { color: '#333' }, ticks: { color: '#a0a0a0', maxTicksLimit: 6 } },
-                            y: { grid: { color: '#333' }, ticks: { color: '#a0a0a0' } }
+                            x: {
+                                grid: { display: false },
+                                ticks: { color: '#666', maxTicksLimit: 8 }
+                            },
+                            y: {
+                                position: 'right',
+                                grid: { color: '#333' },
+                                ticks: { color: '#666' }
+                            }
                         }
                     }
                 });
@@ -292,7 +287,7 @@
 
             } catch (error) {
                 console.error(error);
-                loadingEl.innerHTML = "Fehler: " + error.message + "<br><small>Bitte Seite neu laden.</small>";
+                loadingEl.innerHTML = "Fehler: " + error.message;
             }
         }
 
