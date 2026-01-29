@@ -10,10 +10,12 @@
 
     <style>
         :root {
-            --bg-color: #121212;
-            --card-bg: #1e1e1e;
-            --text-main: #e0e0e0;
-            --text-muted: #a0a0a0;
+            --bg-color: #0f172a;
+            /* Slate 900 */
+            --card-bg: #1e293b;
+            /* Slate 800 */
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
             --accent-green: #4ade80;
             --accent-red: #f87171;
             --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -34,140 +36,171 @@
 
         .app-container {
             width: 100%;
-            max-width: 600px;
-            padding: 20px;
+            max-width: 500px;
+            /* Etwas schmaler für besseren Mobile-Look */
+            padding: 15px;
             box-sizing: border-box;
             padding-bottom: 50px;
         }
 
         header {
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             text-align: center;
+            margin-top: 10px;
         }
 
         h1 {
-            font-size: 1.1rem;
+            font-size: 1rem;
             color: var(--text-muted);
-            font-weight: 500;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
             margin: 0;
         }
 
         /* PREIS KARTE */
         .current-price-card {
-            background-color: var(--card-bg);
-            border-radius: 24px;
-            padding: 30px;
+            background: linear-gradient(145deg, #1e293b, #162032);
+            border-radius: 28px;
+            padding: 30px 20px;
             text-align: center;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-            margin-bottom: 25px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            margin-bottom: 20px;
             border: 1px solid rgba(255, 255, 255, 0.05);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Hintergrund-Effekt */
+        .glow-effect {
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(56, 189, 248, 0.08) 0%, rgba(0, 0, 0, 0) 70%);
+            pointer-events: none;
+        }
+
+        .price-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .price-value {
-            font-size: 4.5rem;
+            font-size: 4.2rem;
             font-weight: 800;
-            line-height: 1;
-            margin: 15px 0;
-            text-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+            line-height: 1.1;
+            margin: 10px 0;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -2px;
         }
 
         .price-unit {
-            font-size: 1.1rem;
+            font-size: 1rem;
             color: var(--text-muted);
-            display: block;
+            font-weight: 400;
         }
 
-        /* HEADER IM CHART */
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            background: rgba(255, 255, 255, 0.1);
+            color: #ccc;
+            margin-top: 15px;
+        }
+
+        /* CHART SECTION */
         .chart-section {
             background-color: var(--card-bg);
             border-radius: 24px;
-            padding: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-            position: relative;
+            padding: 20px 15px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
             border: 1px solid rgba(255, 255, 255, 0.05);
+            position: relative;
         }
 
         .chart-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
             padding: 0 5px;
         }
 
-        .chart-nav-btn {
-            background: rgba(255, 255, 255, 0.1);
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.05);
             border: none;
             color: var(--text-main);
-            width: 40px;
-            height: 40px;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.2s;
         }
 
-        .chart-nav-btn:active {
-            background: rgba(255, 255, 255, 0.2);
+        .nav-btn:active {
+            transform: scale(0.95);
+            background: rgba(255, 255, 255, 0.1);
         }
 
-        .chart-nav-btn:disabled {
+        .nav-btn:disabled {
             opacity: 0.2;
-            cursor: default;
+            cursor: not-allowed;
         }
 
-        .chart-title {
+        .date-display {
+            text-align: center;
+        }
+
+        .date-main {
             font-weight: 600;
             font-size: 1rem;
         }
 
+        .date-sub {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
         .chart-wrapper {
-            height: 320px;
+            height: 300px;
             width: 100%;
             position: relative;
         }
 
-        #status-bar {
-            margin-top: 20px;
-            font-size: 0.75rem;
-            color: #555;
-            text-align: center;
-            line-height: 1.4;
-        }
-
+        /* COLORS */
         .text-green {
-            color: var(--accent-green);
+            color: #4ade80;
+            text-shadow: 0 0 20px rgba(74, 222, 128, 0.3);
         }
 
         .text-red {
-            color: var(--accent-red);
+            color: #f87171;
+            text-shadow: 0 0 20px rgba(248, 113, 113, 0.3);
         }
 
         #loading {
-            margin-top: 60px;
+            margin-top: 50px;
             color: var(--text-muted);
             text-align: center;
+            font-size: 0.9rem;
         }
 
-        .dots-container {
-            display: flex;
-            justify-content: center;
-            gap: 6px;
-            margin-top: 10px;
-        }
-
-        .dot {
-            width: 6px;
-            height: 6px;
-            background: #444;
-            border-radius: 50%;
-            transition: background 0.3s;
-        }
-
-        .dot.active {
-            background: var(--text-main);
+        .info-footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 0.7rem;
+            color: #555;
+            line-height: 1.5;
         }
     </style>
 </head>
@@ -176,173 +209,173 @@
 
     <div class="app-container">
         <header>
-            <h1><i class="bi bi-graph-up-arrow" style="color:#3b82f6; margin-right:8px;"></i>Spotmarkt DE (Fraunhofer
-                ISE)</h1>
+            <h1>Strompreis <span style="color:#38bdf8">Live</span></h1>
         </header>
 
-        <div id="loading">Verbinde mit Energy-Charts via Proxy...</div>
+        <div id="loading">
+            <div style="margin-bottom:10px;"><i class="bi bi-arrow-repeat"
+                    style="font-size:2rem; display:inline-block; animation: spin 1s linear infinite;"></i></div>
+            Lade aWATTar Daten...
+        </div>
 
         <div id="app-content" style="display: none;">
 
             <div class="current-price-card">
-                <span
-                    style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1.5px; color: #888;">Aktueller
-                    Börsenpreis</span>
+                <div class="glow-effect"></div>
+                <div class="price-label">Aktuell (<span id="time-display">--:--</span>)</div>
                 <div id="price-display" class="price-value">--</div>
-                <span class="price-unit">Cent / kWh</span>
-                <div style="margin-top:15px; font-size: 0.85rem; color: #666;">
-                    Stand: <span id="time-display">--:--</span> Uhr
-                </div>
+                <span class="price-unit">Cent / kWh (Netto)</span>
+                <div class="status-badge" id="trend-badge">--</div>
             </div>
 
             <div class="chart-section" id="swipe-area">
                 <div class="chart-header">
-                    <button class="chart-nav-btn" id="btn-prev"><i class="bi bi-chevron-left"></i></button>
-                    <div style="text-align:center;">
-                        <span id="chart-title" class="chart-title">Heute</span>
-                        <div id="chart-subtitle" style="font-size:0.75rem; color:#888;">Ø -- ct/kWh</div>
+                    <button class="nav-btn" id="btn-prev"><i class="bi bi-chevron-left"></i></button>
+                    <div class="date-display">
+                        <div class="date-main" id="chart-date">Heute</div>
+                        <div class="date-sub" id="chart-avg">Ø -- ct/kWh</div>
                     </div>
-                    <button class="chart-nav-btn" id="btn-next"><i class="bi bi-chevron-right"></i></button>
+                    <button class="nav-btn" id="btn-next"><i class="bi bi-chevron-right"></i></button>
                 </div>
 
                 <div class="chart-wrapper">
                     <canvas id="priceChart"></canvas>
                 </div>
-
-                <div class="dots-container">
-                    <div class="dot active" id="dot-0"></div>
-                    <div class="dot" id="dot-1"></div>
-                </div>
             </div>
 
-            <div id="status-bar">
-                Quelle: Fraunhofer ISE (via corsproxy.io)<br>
-                Wischen Sie, um den Tag zu wechseln.
+            <div class="info-footer">
+                Datenquelle: aWATTar API (EPEX Spot DE).<br>
+                Preise für morgen erscheinen täglich ab ca. 13:00 Uhr.<br>
+                Alle Preise sind Netto-Börsenpreise ohne Steuern/Abgaben.
             </div>
         </div>
     </div>
 
-    <script>
-        // KORREKTUR: Wir nutzen einen CORS-Proxy, um die Browsersperre zu umgehen.
-        // Die Ziel-URL ist die Energy-Charts API.
-        const TARGET_API = "https://api.energy-charts.info/price?bzn=DE-LU";
-        const PROXY_URL = "https://corsproxy.io/?";
+    <style>
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
 
-        // Globale Variablen
-        let daysMap = {};
-        let sortedDays = [];
-        let currentDayIndex = 0;
+    <script>
+        // API URL (aWATTar ist CORS-offen und erlaubt Client-Zugriff)
+        const API_URL = "https://api.awattar.de/v1/marketdata";
+
+        let daysData = {};     // Speicher für gruppierte Daten
+        let availableDates = []; // Liste der Datumsschlüssel ("YYYY-MM-DD")
+        let currentIndex = 0;  // Welcher Tag wird angezeigt?
         let chartInstance = null;
 
         async function init() {
             try {
-                // 1. Abruf der Daten über Proxy
-                // Wir fügen den Proxy VOR die eigentliche URL
-                const response = await fetch(PROXY_URL + encodeURIComponent(TARGET_API));
+                // 1. Startzeitpunkt berechnen: Heute 00:00 Uhr
+                // Wir wollen die komplette Kurve von heute sehen
+                const now = new Date();
+                const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
 
-                if (!response.ok) throw new Error("Netzwerkfehler (Proxy)");
+                // 2. Daten abrufen
+                const response = await fetch(`${API_URL}?start=${startOfToday}`);
+                if (!response.ok) throw new Error("API Fehler: " + response.status);
+
                 const json = await response.json();
+                const data = json.data;
 
-                const timestamps = json.unix_seconds;
-                const prices = json.price;
+                if (!data || data.length === 0) throw new Error("Keine Daten verfügbar.");
 
-                if (!timestamps || !prices || timestamps.length === 0) {
-                    throw new Error("API lieferte leere Daten.");
-                }
+                // 3. Daten verarbeiten
+                processData(data);
 
-                // 2. Daten verarbeiten
-                processData(timestamps, prices);
-
-                // 3. UI Starten
+                // 4. UI Initialisieren
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('app-content').style.display = 'block';
 
-                // Tag ermitteln: Wir starten immer beim AKTUELLEN Tag
-                const todayKey = new Date().toISOString().split('T')[0];
-                const foundIndex = sortedDays.indexOf(todayKey);
+                // Start auf "Heute" (erster Eintrag in sortedKeys)
+                currentIndex = 0;
 
-                // Falls "Heute" nicht in der Liste ist, nimm den letzten verfügbaren Tag
-                currentDayIndex = foundIndex >= 0 ? foundIndex : sortedDays.length - 1;
-
-                updateUI();
+                renderDay();
                 updateCurrentPrice();
 
-                // Events
-                initSwipe();
+                // Live Update Uhrzeit
                 setInterval(updateCurrentPrice, 60000);
 
             } catch (err) {
                 document.getElementById('loading').innerHTML = `
-                    <span style="color:#f87171">Ladefehler: ${err.message}</span><br><br>
-                    <small style="color:#666">Blockiert eventuell der Browser oder der Proxy ist überlastet.</small><br><br>
+                    <span style="color:#f87171">Fehler: ${err.message}</span><br><br>
                     <button onclick="location.reload()" style="padding:10px 20px; border-radius:10px; background:#333; color:#fff; border:none; cursor:pointer;">Neu laden</button>
                 `;
-                console.error(err);
             }
         }
 
-        function processData(timestamps, prices) {
-            daysMap = {};
+        function processData(rawData) {
+            daysData = {};
 
-            timestamps.forEach((ts, index) => {
-                const dateObj = new Date(ts * 1000);
-                const dateKey = dateObj.toISOString().split('T')[0]; // Format: "2023-10-27"
+            rawData.forEach(item => {
+                // aWATTar liefert millis timestamp
+                const dateObj = new Date(item.start_timestamp);
+                const dateKey = dateObj.toLocaleDateString('en-CA'); // YYYY-MM-DD Format (lokalzeit sicher)
 
-                if (!daysMap[dateKey]) daysMap[dateKey] = [];
+                if (!daysData[dateKey]) daysData[dateKey] = [];
 
-                daysMap[dateKey].push({
-                    timestamp: ts * 1000,
-                    dateObj: dateObj,
-                    priceCent: prices[index] / 10 // Euro/MWh -> Cent/kWh
+                daysData[dateKey].push({
+                    ts: item.start_timestamp,
+                    date: dateObj,
+                    price: item.marketprice / 10 // Umrechnung EUR/MWh -> ct/kWh
                 });
             });
 
-            sortedDays = Object.keys(daysMap).sort();
+            availableDates = Object.keys(daysData).sort();
         }
 
-        function updateUI() {
-            // Navigation Buttons deaktivieren wenn am Rand
-            document.getElementById('btn-prev').disabled = (currentDayIndex <= 0);
-            document.getElementById('btn-next').disabled = (currentDayIndex >= sortedDays.length - 1);
+        function renderDay() {
+            // Sicherstellen, dass Index gültig ist
+            if (currentIndex < 0) currentIndex = 0;
+            if (currentIndex >= availableDates.length) currentIndex = availableDates.length - 1;
 
-            // Dots: Einfache Logik - Dot 2 leuchtet, wenn wir NICHT auf dem ersten Tag sind (Indikator für Morgen)
-            // Oder besser: Zeigt einfach Position an.
-            const isLast = currentDayIndex === sortedDays.length - 1;
-            document.getElementById('dot-0').className = isLast ? 'dot' : 'dot active';
-            document.getElementById('dot-1').className = isLast ? 'dot active' : 'dot';
+            const dateKey = availableDates[currentIndex];
+            const points = daysData[dateKey];
 
-            // Daten holen
-            const dayKey = sortedDays[currentDayIndex];
-            const points = daysMap[dayKey];
+            // Buttons steuern
+            document.getElementById('btn-prev').disabled = (currentIndex === 0);
+            document.getElementById('btn-next').disabled = (currentIndex === availableDates.length - 1);
 
-            // Texte
-            const dayDate = new Date(points[0].timestamp);
-            const todayStr = new Date().toDateString();
-            const isToday = dayDate.toDateString() === todayStr;
+            // Header Texte
+            const todayKey = new Date().toLocaleDateString('en-CA');
+            const isToday = (dateKey === todayKey);
 
-            let titleText = isToday ? "Heute" : dayDate.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit' });
+            // Datum formatieren (z.B. "Fr, 30.01.")
+            const dateObj = points[0].date;
+            const dateStr = dateObj.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
 
-            // Durchschnitt des Tages
-            const avg = points.reduce((sum, p) => sum + p.priceCent, 0) / points.length;
+            document.getElementById('chart-date').innerText = isToday ? "Heute" : "Morgen (" + dateStr + ")";
 
-            document.getElementById('chart-title').innerText = titleText;
-            document.getElementById('chart-subtitle').innerText = `Ø ${avg.toFixed(2)} ct/kWh`;
+            // Durchschnitt berechnen
+            const avg = points.reduce((acc, cur) => acc + cur.price, 0) / points.length;
+            document.getElementById('chart-avg').innerText = `Ø ${avg.toFixed(2)} ct/kWh`;
 
-            renderChart(points);
+            // Chart zeichnen
+            drawChart(points, isToday);
         }
 
-        function renderChart(points) {
+        function drawChart(points, isToday) {
             const ctx = document.getElementById('priceChart').getContext('2d');
+
             if (chartInstance) chartInstance.destroy();
 
-            const labels = points.map(p => p.dateObj.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }));
-            const data = points.map(p => p.priceCent);
+            const labels = points.map(p => p.date.getHours().toString().padStart(2, '0') + " Uhr");
+            const data = points.map(p => p.price);
 
-            // Verlauf (Gradient)
-            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-            gradient.addColorStop(0, 'rgba(239, 68, 68, 0.6)');    // Rot
-            gradient.addColorStop(0.5, 'rgba(234, 179, 8, 0.4)');  // Gelb
-            gradient.addColorStop(1, 'rgba(34, 197, 94, 0.1)');    // Grün
+            // Gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+            gradient.addColorStop(0, 'rgba(248, 113, 113, 0.5)'); // Rot
+            gradient.addColorStop(0.5, 'rgba(250, 204, 21, 0.3)'); // Gelb
+            gradient.addColorStop(1, 'rgba(74, 222, 128, 0.1)'); // Grün
+
+            // Aktuelle Stunde highlighten (nur wenn Heute)
+            const nowHour = new Date().getHours();
+            const pointRadius = points.map(p => (isToday && p.date.getHours() === nowHour) ? 6 : 0);
+            const pointColor = points.map(p => (isToday && p.date.getHours() === nowHour) ? '#fff' : 'transparent');
 
             chartInstance = new Chart(ctx, {
                 type: 'line',
@@ -351,14 +384,15 @@
                     datasets: [{
                         label: 'Preis',
                         data: data,
-                        borderColor: '#e0e0e0',
+                        borderColor: '#e2e8f0',
                         borderWidth: 2,
                         backgroundColor: gradient,
                         fill: true,
-                        pointRadius: 0,
-                        pointHitRadius: 20, // Größerer Touch-Bereich
-                        pointHoverRadius: 6,
-                        tension: 0.3
+                        tension: 0.4, // Weiche Kurven (simuliert 15min look)
+                        pointRadius: pointRadius,
+                        pointBackgroundColor: pointColor,
+                        pointBorderColor: '#fff',
+                        pointHitRadius: 20
                     }]
                 },
                 options: {
@@ -368,27 +402,26 @@
                     plugins: {
                         legend: { display: false },
                         tooltip: {
-                            backgroundColor: 'rgba(30,30,30,0.95)',
-                            titleColor: '#aaa',
-                            bodyColor: '#fff',
+                            backgroundColor: '#0f172a',
+                            titleColor: '#94a3b8',
+                            bodyColor: '#f8fafc',
                             bodyFont: { size: 14, weight: 'bold' },
+                            padding: 10,
                             displayColors: false,
-                            padding: 12,
                             callbacks: {
-                                title: (items) => items[0].label + ' Uhr',
-                                label: (context) => context.parsed.y.toFixed(2) + ' ct/kWh'
+                                label: (ctx) => ctx.parsed.y.toFixed(2) + ' ct/kWh'
                             }
                         }
                     },
                     scales: {
                         x: {
-                            ticks: { color: '#666', maxTicksLimit: 6, maxRotation: 0 },
+                            ticks: { color: '#64748b', maxTicksLimit: 6, maxRotation: 0 },
                             grid: { display: false }
                         },
                         y: {
                             position: 'right',
-                            grid: { color: '#333' },
-                            ticks: { color: '#888' }
+                            grid: { color: '#334155' },
+                            ticks: { color: '#94a3b8' }
                         }
                     }
                 }
@@ -398,90 +431,62 @@
         function updateCurrentPrice() {
             const now = new Date();
             const nowTs = now.getTime();
+
+            // Wir suchen in ALLEN verfügbaren Daten den aktuellen Punkt
             let currentPoint = null;
 
-            // Finde den aktuellsten Preis
-            for (const key of sortedDays) {
-                const points = daysMap[key];
-                for (let i = 0; i < points.length; i++) {
-                    const p = points[i];
-                    // Wir nehmen an, der Preis gilt bis zum nächsten Datenpunkt (oder 1h/15min)
-                    // Wir schätzen einfach 15min (900000ms), da API oft 15min liefert.
-                    // Sicherer: Bis zum nächsten Timestamp.
-                    let nextTs = points[i + 1] ? points[i + 1].timestamp : (p.timestamp + 3600000);
+            // Flache Liste aller Punkte erstellen
+            let allPoints = [];
+            Object.values(daysData).forEach(arr => allPoints.push(...arr));
 
-                    if (nowTs >= p.timestamp && nowTs < nextTs) {
-                        currentPoint = p;
-                        break;
-                    }
-                }
-                if (currentPoint) break;
-            }
+            // Finden: start <= now < end (bei aWATTar meist 1h, also start + 3600000)
+            currentPoint = allPoints.find(p => nowTs >= p.ts && nowTs < (p.ts + 3600000));
 
-            const displayEl = document.getElementById('price-display');
+            const priceEl = document.getElementById('price-display');
             const timeEl = document.getElementById('time-display');
+            const badgeEl = document.getElementById('trend-badge');
+
+            timeEl.innerText = now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
 
             if (currentPoint) {
-                displayEl.innerText = currentPoint.priceCent.toFixed(2);
+                const price = currentPoint.price;
+                priceEl.innerText = price.toFixed(2);
 
-                // Farbe anhand Tagesschnitt
-                let todayAvg = 15;
-                const todayKey = new Date().toISOString().split('T')[0];
-                if (daysMap[todayKey]) {
-                    const p = daysMap[todayKey];
-                    todayAvg = p.reduce((a, b) => a + b.priceCent, 0) / p.length;
-                }
+                // Durchschnitt von HEUTE holen
+                const todayKey = availableDates[0];
+                const todayPoints = daysData[todayKey];
+                const avg = todayPoints.reduce((acc, cur) => acc + cur.price, 0) / todayPoints.length;
 
-                if (currentPoint.priceCent < todayAvg) {
-                    displayEl.className = "price-value text-green";
+                if (price < avg) {
+                    priceEl.className = "price-value text-green";
+                    badgeEl.innerText = "Günstig (unter Ø)";
+                    badgeEl.style.color = "#4ade80";
+                    badgeEl.style.background = "rgba(74, 222, 128, 0.1)";
                 } else {
-                    displayEl.className = "price-value text-red";
+                    priceEl.className = "price-value text-red";
+                    badgeEl.innerText = "Teuer (über Ø)";
+                    badgeEl.style.color = "#f87171";
+                    badgeEl.style.background = "rgba(248, 113, 113, 0.1)";
                 }
-
-                timeEl.innerText = now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
             } else {
-                displayEl.innerText = "--";
-                timeEl.innerText = "--:--";
+                priceEl.innerText = "--";
+                badgeEl.innerText = "Keine Daten";
             }
         }
 
-        // Swipe
-        function initSwipe() {
-            const el = document.getElementById('swipe-area');
-            let startX = 0;
-            let endX = 0;
+        // Swipe Logic
+        const swipeArea = document.getElementById('swipe-area');
+        let startX = 0;
+        swipeArea.addEventListener('touchstart', e => startX = e.changedTouches[0].screenX, { passive: true });
+        swipeArea.addEventListener('touchend', e => {
+            const endX = e.changedTouches[0].screenX;
+            if (startX - endX > 50) { if (currentIndex < availableDates.length - 1) { currentIndex++; renderDay(); } }
+            if (endX - startX > 50) { if (currentIndex > 0) { currentIndex--; renderDay(); } }
+        }, { passive: true });
 
-            el.addEventListener('touchstart', e => { startX = e.changedTouches[0].screenX; }, { passive: true });
-            el.addEventListener('touchend', e => {
-                endX = e.changedTouches[0].screenX;
-                handleSwipe();
-            }, { passive: true });
-
-            function handleSwipe() {
-                const threshold = 50;
-                // Links wischen -> Nächster Tag
-                if (startX - endX > threshold) nextDay();
-                // Rechts wischen -> Vorheriger Tag
-                if (endX - startX > threshold) prevDay();
-            }
-        }
-
-        function nextDay() {
-            if (currentDayIndex < sortedDays.length - 1) {
-                currentDayIndex++;
-                updateUI();
-            }
-        }
-
-        function prevDay() {
-            if (currentDayIndex > 0) {
-                currentDayIndex--;
-                updateUI();
-            }
-        }
-
-        document.getElementById('btn-next').addEventListener('click', nextDay);
-        document.getElementById('btn-prev').addEventListener('click', prevDay);
+        // Button Listener
+        document.getElementById('btn-next').onclick = () => { currentIndex++; renderDay(); };
+        document.getElementById('btn-prev').onclick = () => { currentIndex--; renderDay(); };
 
         init();
     </script>
